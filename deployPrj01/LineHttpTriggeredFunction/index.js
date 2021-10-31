@@ -55,6 +55,8 @@ async function handleEvent(event) {
     return Promise.resolve(null);
   } else if (event.message.type === 'image') {
     //https://developers.line.biz/ja/reference/messaging-api/#image-message
+    
+    //1.送られてきたネコの画像をいったんAzureのStrageサービスに保存
     const blobName = uuidv4() + '.jpg'
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
     const stream = await client.getMessageContent(event.message.id);
@@ -65,6 +67,7 @@ async function handleEvent(event) {
       url: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`
     };
 
+    //2.保存した画像を、作成した機械学習モデルのPredictionにかけて、ネコの種類を予測させる
     const results = await predictor.classifyImageUrl(projectId, publishedName, imageUrl);
 
     let result = ""
@@ -79,6 +82,7 @@ async function handleEvent(event) {
         preProbability = predictedResult.probability;
     });
 
+    //3.ネコの種類の予測結果をユーザ(LINEアプリ)に返す
     return client.replyMessage(event.replyToken, {
       type: 'text',
       text: `ふむふむこのネコの種類は...💡 ズバリ【${result}】という種類のネコだにゃん😸`
